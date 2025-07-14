@@ -1,0 +1,6 @@
+
+{
+  "name": "Conqueror's Blade Uppdragsspårare",
+  "description": "En applikation för att hålla koll på enheters uppdrag i Conqueror's Blade. All data hanteras lokalt på din dator och sparas automatiskt.",
+  "requestFramePermissions": []
+}
