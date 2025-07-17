@@ -69,7 +69,7 @@ const App: React.FC = () => {
 
     // Season Management
     const handleAddSeason = () => {
-        showEditModal('Lägg till ny säsong', '', name => {
+        showEditModal('Add New Season', '', name => {
             if (name) {
                 const newSeason: Season = { id: crypto.randomUUID(), name, units: [] };
                 handleSetSeasons(prev => [...prev, newSeason]);
@@ -81,7 +81,7 @@ const App: React.FC = () => {
 
     const handleEditSeason = () => {
         if (activeSeason) {
-            showEditModal('Redigera säsong', activeSeason.name, newName => {
+            showEditModal('Edit Season', activeSeason.name, newName => {
                 if (newName) {
                     handleSetSeasons(prev => prev.map(s => s.id === activeSeasonId ? { ...s, name: newName } : s));
                 }
@@ -91,7 +91,7 @@ const App: React.FC = () => {
 
     const handleDeleteSeason = () => {
         if (activeSeason) {
-            showConfirmModal('Ta bort säsong?', `Är du säker på att du vill ta bort '${activeSeason.name}'? Detta kan inte ångras.`, () => {
+            showConfirmModal('Delete Season?', `Are you sure you want to delete '${activeSeason.name}'? This action cannot be undone.`, () => {
                 handleSetSeasons(prev => prev.filter(s => s.id !== activeSeasonId));
                 const firstSeason = sortedSeasons.filter(s => s.id !== activeSeasonId)[0];
                 setActiveSeasonId(firstSeason ? firstSeason.id : null);
@@ -110,7 +110,7 @@ const App: React.FC = () => {
     // File Operations
     const handleSaveFile = async (saveAs = false) => {
         if (!window.showSaveFilePicker) {
-            alert("Din webbläsare stödjer inte File System Access API. Använd en modern webbläsare som Chrome eller Edge.");
+            alert("Your browser does not support the File System Access API. Please use a modern browser like Chrome or Edge.");
             return;
         }
 
@@ -124,7 +124,7 @@ const App: React.FC = () => {
             const writable = await handle.createWritable();
             await writable.write(JSON.stringify(seasons, null, 2));
             await writable.close();
-            setFileInfo(`Sparad till: ${handle.name}`);
+            setFileInfo(`Saved to: ${handle.name}`);
             setSaveStatus('saving');
             setTimeout(() => setSaveStatus('idle'), 2000);
         } catch (err: any) {
@@ -134,7 +134,7 @@ const App: React.FC = () => {
 
     const handleImportFile = async () => {
         if (!window.showOpenFilePicker) {
-            alert("Din webbläsare stödjer inte File System Access API.");
+            alert("Your browser does not support the File System Access API.");
             return;
         }
         try {
@@ -145,19 +145,19 @@ const App: React.FC = () => {
             const content = await file.text();
             const importedData = JSON.parse(content);
             
-            if (!Array.isArray(importedData)) throw new Error("Ogiltigt filformat.");
+            if (!Array.isArray(importedData)) throw new Error("Invalid file format.");
 
-            showConfirmModal("Importera data?", "Detta ersätter all nuvarande data. Vill du fortsätta?", () => {
+            showConfirmModal("Import Data?", "This will replace all current data. Do you want to continue?", () => {
                 // Basic data validation and ID generation
                 const sanitizedData: Season[] = importedData.map((s: any) => ({
                     id: s.id || crypto.randomUUID(),
-                    name: s.name || "Namnlös Säsong",
+                    name: s.name || "Unnamed Season",
                     units: (s.units || []).map((u: any) => ({
                         id: u.id || crypto.randomUUID(),
-                        name: u.name || "Namnlös Enhet",
+                        name: u.name || "Unnamed Unit",
                         quests: (u.quests || []).map((q: any) => ({
                             id: q.id || crypto.randomUUID(),
-                            description: q.description || "Namnlöst Uppdrag",
+                            description: q.description || "Unnamed Quest",
                             completed: !!q.completed
                         }))
                     }))
@@ -167,13 +167,13 @@ const App: React.FC = () => {
                 const firstSeason = [...sanitizedData].sort((a,b) => a.name.localeCompare(b.name))[0];
                 setActiveSeasonId(firstSeason?.id || null);
                 setActiveUnitIds(firstSeason?.units.map(u => u.id) || []);
-                setFileInfo(`Importerad från: ${handle.name}`);
+                setFileInfo(`Imported from: ${handle.name}`);
             });
 
         } catch (err: any) {
              if (err.name !== 'AbortError') {
                  console.error('Error importing file:', err);
-                 alert(`Fel vid import: ${err.message}`);
+                 alert(`Error during import: ${err.message}`);
              }
         }
     };
@@ -187,7 +187,7 @@ const App: React.FC = () => {
                     <FlameIcon />
                     <h1 className="text-5xl font-cinzel font-bold text-yellow-400 tracking-wider">Conqueror's Blade Tracker</h1>
                 </div>
-                <p className="text-gray-400 mt-3">Importera din .json-fil för att ladda data. Glöm inte att spara dina ändringar.</p>
+                <p className="text-gray-400 mt-3">Import your .json file to load data. Don't forget to save your changes.</p>
             </header>
 
             {/* --- Data Management & Search --- */}
@@ -196,11 +196,11 @@ const App: React.FC = () => {
                      {/* Search Inputs */}
                     <div className="flex-grow grid sm:grid-cols-2 gap-4">
                         <div className="relative">
-                            <input type="search" value={unitSearchQuery} onChange={e => { setUnitSearchQuery(e.target.value); setQuestSearchQuery(''); }} placeholder="Sök enhet..." className="w-full bg-gray-700 text-white placeholder-gray-400 p-2.5 pl-10 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+                            <input type="search" value={unitSearchQuery} onChange={e => { setUnitSearchQuery(e.target.value); setQuestSearchQuery(''); }} placeholder="Search unit..." className="w-full bg-gray-700 text-white placeholder-gray-400 p-2.5 pl-10 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"/>
                             <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none"><SearchIcon /></div>
                         </div>
                         <div className="relative">
-                            <input type="search" value={questSearchQuery} onChange={e => { setQuestSearchQuery(e.target.value); setUnitSearchQuery(''); }} placeholder="Sök uppdrag..." className="w-full bg-gray-700 text-white placeholder-gray-400 p-2.5 pl-10 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500"/>
+                            <input type="search" value={questSearchQuery} onChange={e => { setQuestSearchQuery(e.target.value); setUnitSearchQuery(''); }} placeholder="Search quest..." className="w-full bg-gray-700 text-white placeholder-gray-400 p-2.5 pl-10 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500"/>
                             <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none"><SearchIcon /></div>
                         </div>
                     </div>
@@ -208,10 +208,10 @@ const App: React.FC = () => {
                     {/* File Controls */}
                     <div className="flex gap-2 items-center">
                         <p className="text-xs text-gray-500 self-center mr-2 hidden sm:block">{fileInfo}</p>
-                         <button onClick={() => handleSaveFile(true)} title="Spara data som .json-fil" className={`flex items-center justify-center bg-gray-700/50 border border-gray-600 hover:bg-gray-700/80 text-gray-300 hover:text-white p-2 rounded-md transition-all duration-300 ${saveStatus === 'saving' ? 'border-green-500' : ''}`}>
+                         <button onClick={() => handleSaveFile(true)} title="Save data as .json file" className={`flex items-center justify-center bg-gray-700/50 border border-gray-600 hover:bg-gray-700/80 text-gray-300 hover:text-white p-2 rounded-md transition-all duration-300 ${saveStatus === 'saving' ? 'border-green-500' : ''}`}>
                              {saveStatus === 'saving' ? <CheckmarkIcon /> : <SaveIcon />}
                          </button>
-                        <button onClick={handleImportFile} title="Importera från .json-fil" className="flex items-center justify-center bg-gray-700/50 border border-gray-600 hover:bg-gray-700/80 text-gray-300 hover:text-white p-2 rounded-md transition-all duration-300">
+                        <button onClick={handleImportFile} title="Import from .json file" className="flex items-center justify-center bg-gray-700/50 border border-gray-600 hover:bg-gray-700/80 text-gray-300 hover:text-white p-2 rounded-md transition-all duration-300">
                             <UploadIcon />
                         </button>
                     </div>
@@ -221,13 +221,13 @@ const App: React.FC = () => {
             {/* --- Season Selector --- */}
             {!isSearching && (
                  <div className="section-card bg-gray-800 border border-gray-700 p-5 rounded-lg mb-8">
-                    <h2 className="text-2xl font-semibold mb-4 text-gray-100">Välj Säsong</h2>
+                    <h2 className="text-2xl font-semibold mb-4 text-gray-100">Select Season</h2>
                     <div className="flex flex-col sm:flex-row gap-3 items-center">
                         <select value={activeSeasonId || ''} onChange={handleSeasonChange} className="flex-grow w-full bg-gray-700 text-white p-2.5 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-yellow-500" disabled={seasons.length === 0}>
-                            <option value="" disabled>Välj en säsong...</option>
+                            <option value="" disabled>Select a season...</option>
                             {sortedSeasons.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                         </select>
-                        <button onClick={handleAddSeason} title="Lägg till ny säsong" className="bg-yellow-600 hover:bg-yellow-700 text-white font-bold p-2.5 rounded-md transition duration-300"><PlusIcon /></button>
+                        <button onClick={handleAddSeason} title="Add New Season" className="bg-yellow-600 hover:bg-yellow-700 text-white font-bold p-2.5 rounded-md transition duration-300"><PlusIcon /></button>
                         {activeSeason && <>
                             <button onClick={handleEditSeason} className="text-gray-500 hover:text-yellow-400 transition-colors p-2 rounded-full"><EditIcon /></button>
                             <button onClick={handleDeleteSeason} className="text-gray-500 hover:text-red-500 transition-colors p-2 rounded-full"><DeleteIcon /></button>
@@ -240,9 +240,9 @@ const App: React.FC = () => {
             <main id="content-container" className="space-y-8">
                 {seasons.length === 0 && !isSearching ? (
                     <div className="text-center text-gray-500 border-2 border-dashed border-gray-700 p-10 rounded-lg">
-                        <h3 className="text-2xl font-semibold text-gray-200">Välkommen!</h3>
-                        <p className="mt-2">Programmet är tomt. Börja med att importera en datafil via import-knappen ovan.</p>
-                        <p className="mt-4 text-sm">Om du inte har en fil kan du börja från grunden genom att skapa en ny säsong.</p>
+                        <h3 className="text-2xl font-semibold text-gray-200">Welcome!</h3>
+                        <p className="mt-2">The application is empty. Start by importing a data file using the import button above.</p>
+                        <p className="mt-4 text-sm">If you don't have a file, you can start from scratch by creating a new season.</p>
                     </div>
                 ) : isSearching ? (
                     <SearchResultsView results={searchResults} setSeasons={handleSetSeasons} showEditModal={showEditModal} showConfirmModal={showConfirmModal} />
@@ -265,8 +265,8 @@ const SeasonView = ({ season, activeUnitIds, setActiveUnitIds, setSeasons, showE
     if (!season) {
         return (
             <div className="text-center text-gray-500 border-2 border-dashed border-gray-700 p-10 rounded-lg">
-                <h3 className="text-lg font-semibold">Ingen säsong vald</h3>
-                <p>Välj en säsong från listan ovan för att se dess enheter, eller lägg till en ny.</p>
+                <h3 className="text-lg font-semibold">No Season Selected</h3>
+                <p>Select a season from the list above to see its units, or add a new one.</p>
             </div>
         );
     }
@@ -286,32 +286,32 @@ const SeasonView = ({ season, activeUnitIds, setActiveUnitIds, setSeasons, showE
         <div className="bg-gray-800 border border-gray-700 p-5 rounded-lg">
             {/* Unit Selector */}
             <div className="mb-6 pb-6 border-b border-gray-700">
-                <h3 className="text-xl font-semibold text-gray-100 mb-3">Välj enheter att visa</h3>
+                <h3 className="text-xl font-semibold text-gray-100 mb-3">Select units to display</h3>
                 {sortedUnits.length > 0 ? (
                     <>
                         <select multiple value={activeUnitIds} onChange={(e) => setActiveUnitIds(Array.from(e.target.selectedOptions, option => option.value))}
                             className="w-full h-40 bg-gray-900/50 text-white p-2 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500">
                             {sortedUnits.map(unit => <option key={unit.id} value={unit.id}>{unit.name}</option>)}
                         </select>
-                        <p className="text-xs text-gray-500 mt-2">Håll ner Ctrl (eller Cmd på Mac) för att välja flera.</p>
+                        <p className="text-xs text-gray-500 mt-2">Hold Ctrl (or Cmd on Mac) to select multiple.</p>
                     </>
-                ) : <p className="text-gray-400">Inga enheter har lagts till i denna säsong.</p>}
+                ) : <p className="text-gray-400">No units have been added to this season.</p>}
             </div>
 
             {/* Visible Units */}
             <div className="units-container space-y-6">
                 {visibleUnits.length > 0 
                     ? visibleUnits.map(unit => <UnitCard key={unit.id} seasonId={season.id} unit={unit} setSeasons={setSeasons} showEditModal={showEditModal} showConfirmModal={showConfirmModal} />)
-                    : <p className="text-gray-400">Inga enheter valda att visa.</p>
+                    : <p className="text-gray-400">No units selected for display.</p>
                 }
             </div>
             
             {/* Add New Unit Form */}
             <div className="mt-6 border-t border-gray-700 pt-4">
-                <h3 className="text-xl font-semibold text-gray-100 mb-3">Lägg till ny enhet</h3>
+                <h3 className="text-xl font-semibold text-gray-100 mb-3">Add New Unit</h3>
                 <form onSubmit={e => { e.preventDefault(); handleAddUnit(e.currentTarget.unitName.value); e.currentTarget.reset(); }} className="flex flex-col sm:flex-row gap-3 items-center">
-                    <input name="unitName" type="text" placeholder="Enhetens namn..." required className="flex-grow w-full sm:w-auto bg-gray-700 text-white placeholder-gray-400 p-2 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                    <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md transition duration-300 w-full sm:w-auto">Lägg till</button>
+                    <input name="unitName" type="text" placeholder="Unit name..." required className="flex-grow w-full sm:w-auto bg-gray-700 text-white placeholder-gray-400 p-2 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md transition duration-300 w-full sm:w-auto">Add</button>
                 </form>
             </div>
         </div>
@@ -322,8 +322,8 @@ const SearchResultsView = ({ results, setSeasons, showEditModal, showConfirmModa
      if (results.length === 0) {
         return (
             <div className="text-center text-gray-500 border-2 border-dashed border-gray-700 p-10 rounded-lg">
-                <h3 className="text-lg font-semibold">Inget resultat</h3>
-                <p>Din sökning gav inga träffar.</p>
+                <h3 className="text-lg font-semibold">No Results</h3>
+                <p>Your search did not match any data.</p>
             </div>
         );
     }
@@ -333,7 +333,7 @@ const SearchResultsView = ({ results, setSeasons, showEditModal, showConfirmModa
     return (
         <div className="bg-gray-800 border border-gray-700 p-5 rounded-lg">
             <h2 className={`text-2xl font-bold mb-4 ${isUnitSearch ? 'text-blue-400' : 'text-green-400'}`}>
-                Sökresultat
+                Search Results
             </h2>
             <div className="space-y-6">
             {results.map(result => {
@@ -373,7 +373,7 @@ const UnitCard = ({ seasonId, unit, setSeasons, showEditModal, showConfirmModal,
     };
     
     const handleEditUnit = () => {
-        showEditModal('Redigera enhet', unit.name, newName => {
+        showEditModal('Edit Unit', unit.name, newName => {
             if(newName) {
                 setSeasons(prev => prev.map(s => s.id === seasonId ? { ...s, units: s.units.map(u => u.id === unit.id ? { ...u, name: newName } : u) } : s ));
             }
@@ -381,7 +381,7 @@ const UnitCard = ({ seasonId, unit, setSeasons, showEditModal, showConfirmModal,
     };
 
     const handleDeleteUnit = () => {
-        showConfirmModal('Ta bort enhet?', `Är du säker på att du vill ta bort '${unit.name}' och alla dess uppdrag?`, () => {
+        showConfirmModal('Delete Unit?', `Are you sure you want to delete '${unit.name}' and all of its quests?`, () => {
             setSeasons(prev => prev.map(s => s.id === seasonId ? { ...s, units: s.units.filter(u => u.id !== unit.id) } : s ));
         });
     };
@@ -406,15 +406,15 @@ const UnitCard = ({ seasonId, unit, setSeasons, showEditModal, showConfirmModal,
             <div className="quests-container ml-4 space-y-2">
                 {sortedQuests.length > 0 
                     ? sortedQuests.map(q => <QuestItem key={q.id} quest={q} seasonId={seasonId} unitId={unit.id} setSeasons={setSeasons} showEditModal={showEditModal} showConfirmModal={showConfirmModal} />)
-                    : <p className="text-xs text-gray-500">Inga uppdrag tillagda.</p>
+                    : <p className="text-xs text-gray-500">No quests added.</p>
                 }
             </div>
 
             {/* Add Quest Form */}
             <div className="mt-4 ml-4 border-t border-gray-600 pt-3">
                  <form onSubmit={e => { e.preventDefault(); handleAddQuest(e.currentTarget.questDesc.value); e.currentTarget.reset(); }} className="flex flex-col sm:flex-row gap-2 items-center">
-                    <input name="questDesc" type="text" placeholder="Beskrivning av nytt uppdrag..." required className="flex-grow w-full sm:w-auto bg-gray-600 text-white placeholder-gray-400 p-2 rounded-md border border-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500" />
-                    <button type="submit" className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-3 rounded-md text-sm transition duration-300 w-full sm:w-auto">Lägg till uppdrag</button>
+                    <input name="questDesc" type="text" placeholder="Description of new quest..." required className="flex-grow w-full sm:w-auto bg-gray-600 text-white placeholder-gray-400 p-2 rounded-md border border-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500" />
+                    <button type="submit" className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-3 rounded-md text-sm transition duration-300 w-full sm:w-auto">Add Quest</button>
                 </form>
             </div>
         </div>
@@ -433,7 +433,7 @@ const QuestItem = ({ quest, seasonId, unitId, setSeasons, showEditModal, showCon
     };
 
     const handleEditQuest = () => {
-        showEditModal('Redigera uppdrag', quest.description, newDesc => {
+        showEditModal('Edit Quest', quest.description, newDesc => {
             if (newDesc) {
                  setSeasons(prev => prev.map(s => s.id === seasonId
                     ? { ...s, units: s.units.map(u => u.id === unitId 
@@ -446,7 +446,7 @@ const QuestItem = ({ quest, seasonId, unitId, setSeasons, showEditModal, showCon
     };
 
     const handleDeleteQuest = () => {
-        showConfirmModal('Ta bort uppdrag?', 'Är du säker på att du vill ta bort detta uppdrag?', () => {
+        showConfirmModal('Delete Quest?', 'Are you sure you want to delete this quest?', () => {
              setSeasons(prev => prev.map(s => s.id === seasonId
                 ? { ...s, units: s.units.map(u => u.id === unitId 
                     ? { ...u, quests: u.quests.filter(q => q.id !== quest.id) }
@@ -487,8 +487,8 @@ const ConfirmationModal = ({ isOpen, title, message, onConfirm, onCancel }) => {
                 <h3 className="text-xl font-bold text-white mb-4">{title}</h3>
                 <p className="text-gray-300 mb-6">{message}</p>
                 <div className="flex justify-end gap-4">
-                    <button onClick={onCancel} className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-md transition duration-300">Avbryt</button>
-                    <button onClick={handleConfirm} className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-md transition duration-300">Bekräfta</button>
+                    <button onClick={onCancel} className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-md transition duration-300">Cancel</button>
+                    <button onClick={handleConfirm} className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-md transition duration-300">Confirm</button>
                 </div>
             </div>
         </div>
@@ -523,8 +523,8 @@ const EditModal = ({ isOpen, title, initialValue, onSave, onCancel }) => {
                 <input type="text" value={value} onChange={e => setValue(e.target.value)} onKeyDown={handleKeyDown} autoFocus
                     className="w-full bg-gray-700 text-white placeholder-gray-400 p-2 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-yellow-500" />
                 <div className="flex justify-end gap-4 mt-6">
-                    <button onClick={onCancel} className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-md transition duration-300">Avbryt</button>
-                    <button onClick={handleSave} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-md transition duration-300">Spara</button>
+                    <button onClick={onCancel} className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-md transition duration-300">Cancel</button>
+                    <button onClick={handleSave} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-md transition duration-300">Save</button>
                 </div>
             </div>
         </div>
