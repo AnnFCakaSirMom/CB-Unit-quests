@@ -1,15 +1,13 @@
-
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Season, Unit, Quest } from './types';
-import { useLocalStorage } from './hooks/useLocalStorage';
 import { SaveIcon, UploadIcon, PlusIcon, EditIcon, DeleteIcon, SearchIcon, FlameIcon, CheckmarkIcon } from './components/Icons';
 
 // --- Main Application Component ---
 const App: React.FC = () => {
     // --- State Management ---
-    const [seasons, setSeasons] = useLocalStorage<Season[]>('cb_tracker_seasons', []);
-    const [activeSeasonId, setActiveSeasonId] = useLocalStorage<string | null>('cb_tracker_activeSeasonId', null);
-    const [activeUnitIds, setActiveUnitIds] = useLocalStorage<string[]>('cb_tracker_activeUnitIds', []);
+    const [seasons, setSeasons] = useState<Season[]>([]);
+    const [activeSeasonId, setActiveSeasonId] = useState<string | null>(null);
+    const [activeUnitIds, setActiveUnitIds] = useState<string[]>([]);
     
     const [unitSearchQuery, setUnitSearchQuery] = useState('');
     const [questSearchQuery, setQuestSearchQuery] = useState('');
@@ -158,9 +156,9 @@ const App: React.FC = () => {
                         id: u.id || crypto.randomUUID(),
                         name: u.name || "Namnlös Enhet",
                         quests: (u.quests || []).map((q: any) => ({
-                           id: q.id || crypto.randomUUID(),
-                           description: q.description || "Namnlöst Uppdrag",
-                           completed: !!q.completed
+                            id: q.id || crypto.randomUUID(),
+                            description: q.description || "Namnlöst Uppdrag",
+                            completed: !!q.completed
                         }))
                     }))
                 }));
@@ -174,8 +172,8 @@ const App: React.FC = () => {
 
         } catch (err: any) {
              if (err.name !== 'AbortError') {
-                console.error('Error importing file:', err);
-                alert(`Fel vid import: ${err.message}`);
+                 console.error('Error importing file:', err);
+                 alert(`Fel vid import: ${err.message}`);
              }
         }
     };
@@ -189,7 +187,7 @@ const App: React.FC = () => {
                     <FlameIcon />
                     <h1 className="text-5xl font-cinzel font-bold text-yellow-400 tracking-wider">Conqueror's Blade Tracker</h1>
                 </div>
-                <p className="text-gray-400 mt-3">Håll koll på dina enheters uppdrag. All data sparas automatiskt i din webbläsare.</p>
+                <p className="text-gray-400 mt-3">Importera din .json-fil för att ladda data. Glöm inte att spara dina ändringar.</p>
             </header>
 
             {/* --- Data Management & Search --- */}
@@ -211,16 +209,12 @@ const App: React.FC = () => {
                     <div className="flex gap-2 items-center">
                         <p className="text-xs text-gray-500 self-center mr-2 hidden sm:block">{fileInfo}</p>
                          <button onClick={() => handleSaveFile(true)} title="Spara data som .json-fil" className={`flex items-center justify-center bg-gray-700/50 border border-gray-600 hover:bg-gray-700/80 text-gray-300 hover:text-white p-2 rounded-md transition-all duration-300 ${saveStatus === 'saving' ? 'border-green-500' : ''}`}>
-                            {saveStatus === 'saving' ? <CheckmarkIcon /> : <SaveIcon />}
-                        </button>
+                             {saveStatus === 'saving' ? <CheckmarkIcon /> : <SaveIcon />}
+                         </button>
                         <button onClick={handleImportFile} title="Importera från .json-fil" className="flex items-center justify-center bg-gray-700/50 border border-gray-600 hover:bg-gray-700/80 text-gray-300 hover:text-white p-2 rounded-md transition-all duration-300">
                             <UploadIcon />
                         </button>
                     </div>
-                </div>
-                 {/* NEW: Storage Indicator */}
-                <div className="mt-4">
-                    <StorageIndicator data={seasons} />
                 </div>
             </div>
 
@@ -229,7 +223,7 @@ const App: React.FC = () => {
                  <div className="section-card bg-gray-800 border border-gray-700 p-5 rounded-lg mb-8">
                     <h2 className="text-2xl font-semibold mb-4 text-gray-100">Välj Säsong</h2>
                     <div className="flex flex-col sm:flex-row gap-3 items-center">
-                        <select value={activeSeasonId || ''} onChange={handleSeasonChange} className="flex-grow w-full bg-gray-700 text-white p-2.5 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-yellow-500">
+                        <select value={activeSeasonId || ''} onChange={handleSeasonChange} className="flex-grow w-full bg-gray-700 text-white p-2.5 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-yellow-500" disabled={seasons.length === 0}>
                             <option value="" disabled>Välj en säsong...</option>
                             {sortedSeasons.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                         </select>
@@ -237,14 +231,20 @@ const App: React.FC = () => {
                         {activeSeason && <>
                             <button onClick={handleEditSeason} className="text-gray-500 hover:text-yellow-400 transition-colors p-2 rounded-full"><EditIcon /></button>
                             <button onClick={handleDeleteSeason} className="text-gray-500 hover:text-red-500 transition-colors p-2 rounded-full"><DeleteIcon /></button>
-                        </>}
+                        </> }
                     </div>
                  </div>
             )}
             
             {/* --- Main Content Area --- */}
             <main id="content-container" className="space-y-8">
-                {isSearching ? (
+                {seasons.length === 0 && !isSearching ? (
+                    <div className="text-center text-gray-500 border-2 border-dashed border-gray-700 p-10 rounded-lg">
+                        <h3 className="text-2xl font-semibold text-gray-200">Välkommen!</h3>
+                        <p className="mt-2">Programmet är tomt. Börja med att importera en datafil via import-knappen ovan.</p>
+                        <p className="mt-4 text-sm">Om du inte har en fil kan du börja från grunden genom att skapa en ny säsong.</p>
+                    </div>
+                ) : isSearching ? (
                     <SearchResultsView results={searchResults} setSeasons={handleSetSeasons} showEditModal={showEditModal} showConfirmModal={showConfirmModal} />
                 ) : (
                     <SeasonView season={activeSeason} activeUnitIds={activeUnitIds} setActiveUnitIds={setActiveUnitIds} setSeasons={handleSetSeasons} showEditModal={showEditModal} showConfirmModal={showConfirmModal}/>
@@ -440,7 +440,7 @@ const QuestItem = ({ quest, seasonId, unitId, setSeasons, showEditModal, showCon
                         ? { ...u, quests: u.quests.map(q => q.id === quest.id ? { ...q, description: newDesc } : q) }
                         : u)
                     } : s
-                ));
+                 ));
             }
         });
     };
@@ -526,50 +526,6 @@ const EditModal = ({ isOpen, title, initialValue, onSave, onCancel }) => {
                     <button onClick={onCancel} className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-md transition duration-300">Avbryt</button>
                     <button onClick={handleSave} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-md transition duration-300">Spara</button>
                 </div>
-            </div>
-        </div>
-    );
-};
-
-// --- NEW: Storage Indicator Component ---
-const StorageIndicator = ({ data }) => {
-    const limit = 5 * 1024 * 1024; // 5 MB in bytes
-
-    const sizeInBytes = useMemo(() => {
-        if (!data) return 0;
-        // Using Blob is a more accurate way to get byte size of UTF-8 string
-        return new Blob([JSON.stringify(data)]).size;
-    }, [data]);
-    
-    const percentage = useMemo(() => (sizeInBytes / limit) * 100, [sizeInBytes, limit]);
-
-    const formatBytes = (bytes: number, decimals = 2) => {
-        if (bytes === 0) return '0 Bytes';
-        const k = 1024;
-        const dm = decimals < 0 ? 0 : decimals;
-        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
-    };
-
-    const progressBarColor = useMemo(() => {
-        if (percentage > 90) return 'bg-red-600';
-        if (percentage > 75) return 'bg-yellow-500';
-        return 'bg-green-600';
-    }, [percentage]);
-
-    return (
-        <div className="space-y-1">
-            <div className="flex justify-between text-xs text-gray-400">
-                <span>Lagring i webbläsare</span>
-                <span>{formatBytes(sizeInBytes)} / {formatBytes(limit)}</span>
-            </div>
-            <div className="w-full bg-gray-700 rounded-full h-2">
-                <div 
-                    className={`h-2 rounded-full transition-all duration-500 ${progressBarColor}`}
-                    style={{ width: `${Math.min(percentage, 100)}%` }}
-                    title={`Använder ${percentage.toFixed(2)}% av lagringsutrymmet`}
-                ></div>
             </div>
         </div>
     );
