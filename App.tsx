@@ -1,12 +1,84 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Season, Unit, Quest } from './types';
 
-// --- Icon Components (inlined to fix resolution error) ---
+// --- Type Definitions ---
 interface IconProps {
   size?: number;
   className?: string;
 }
 
+// Defines the shape of function props for cleaner interfaces
+type SetSeasonsFn = React.Dispatch<React.SetStateAction<Season[]>>;
+type ShowEditModalFn = (title: string, initialValue: string, onSave: (value: string) => void) => void;
+type ShowConfirmModalFn = (title: string, message: string, onConfirm: () => void) => void;
+
+// Defines the shapes for search result items
+type UnitSearchResult = {
+  type: 'unit';
+  season: Season;
+  unit: Unit;
+};
+type QuestSearchResult = {
+  type: 'quest';
+  season: Season;
+  unit: Unit;
+  quests: Quest[];
+};
+type SearchResult = UnitSearchResult | QuestSearchResult;
+
+// --- Prop Interfaces for Components ---
+interface SeasonViewProps {
+  season: Season | undefined;
+  activeUnitIds: string[];
+  setActiveUnitIds: React.Dispatch<React.SetStateAction<string[]>>;
+  setSeasons: SetSeasonsFn;
+  showEditModal: ShowEditModalFn;
+  showConfirmModal: ShowConfirmModalFn;
+}
+
+interface SearchResultsViewProps {
+  results: SearchResult[];
+  setSeasons: SetSeasonsFn;
+  showEditModal: ShowEditModalFn;
+  showConfirmModal: ShowConfirmModalFn;
+}
+
+interface UnitCardProps {
+  seasonId: string;
+  unit: Unit;
+  setSeasons: SetSeasonsFn;
+  showEditModal: ShowEditModalFn;
+  showConfirmModal: ShowConfirmModalFn;
+  seasonName?: string | null;
+}
+
+interface QuestItemProps {
+  quest: Quest;
+  seasonId: string;
+  unitId: string;
+  setSeasons: SetSeasonsFn;
+  showEditModal: ShowEditModalFn;
+  showConfirmModal: ShowConfirmModalFn;
+}
+
+interface ConfirmationModalProps {
+  isOpen: boolean;
+  title: string;
+  message: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}
+
+interface EditModalProps {
+  isOpen: boolean;
+  title: string;
+  initialValue: string;
+  onSave: (value: string) => void;
+  onCancel: () => void;
+}
+
+
+// --- Icon Components ---
 const SaveIcon: React.FC<IconProps> = ({ size = 18, className }) => (
   <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
     <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
@@ -73,9 +145,9 @@ const App: React.FC = () => {
     const [questSearchQuery, setQuestSearchQuery] = useState('');
 
     const [modal, setModal] = useState<'confirm' | 'edit' | null>(null);
-    const [modalProps, setModalProps] = useState<any>({});
+    // Note: This state holds props for the active modal. Using Partial avoids errors when no modal is open.
+    const [modalProps, setModalProps] = useState<Partial<ConfirmationModalProps & EditModalProps>>({});
     
-    // MODIFIED: Added state to hold the file handle
     const [fileHandle, setFileHandle] = useState<FileSystemFileHandle | null>(null);
     const [fileInfo, setFileInfo] = useState('');
     const [saveStatus, setSaveStatus] = useState<'idle'|'saving'>('idle');
@@ -87,7 +159,7 @@ const App: React.FC = () => {
     
     const isSearching = unitSearchQuery.length > 0 || questSearchQuery.length > 0;
 
-    const searchResults = useMemo(() => {
+    const searchResults: SearchResult[] = useMemo(() => {
         if (unitSearchQuery) {
             const query = unitSearchQuery.toLowerCase();
             return seasons.flatMap(season =>
@@ -112,17 +184,17 @@ const App: React.FC = () => {
 
 
     // --- Event Handlers & Logic ---
-    const handleSetSeasons = (newSeasons: Season[] | ((prev: Season[]) => Season[])) => {
+    const handleSetSeasons: SetSeasonsFn = (newSeasons) => {
         const updatedSeasons = typeof newSeasons === 'function' ? newSeasons(seasons) : newSeasons;
         setSeasons(updatedSeasons);
     };
     
-    const showConfirmModal = (title: string, message: string, onConfirm: () => void) => {
+    const showConfirmModal: ShowConfirmModalFn = (title, message, onConfirm) => {
         setModalProps({ title, message, onConfirm });
         setModal('confirm');
     };
 
-    const showEditModal = (title: string, initialValue: string, onSave: (value: string) => void) => {
+    const showEditModal: ShowEditModalFn = (title, initialValue, onSave) => {
         setModalProps({ title, initialValue, onSave });
         setModal('edit');
     };
@@ -154,8 +226,12 @@ const App: React.FC = () => {
     const handleDeleteSeason = () => {
         if (activeSeason) {
             showConfirmModal('Delete Season?', `Are you sure you want to delete '${activeSeason.name}'? This action cannot be undone.`, () => {
-                handleSetSeasons(prev => prev.filter(s => s.id !== activeSeasonId));
-                const firstSeason = sortedSeasons.filter(s => s.id !== activeSeasonId)[0];
+                let firstSeason: Season | undefined;
+                handleSetSeasons(prev => {
+                    const remaining = prev.filter(s => s.id !== activeSeasonId);
+                    firstSeason = [...remaining].sort((a,b) => a.name.localeCompare(b.name))[0];
+                    return remaining;
+                });
                 setActiveSeasonId(firstSeason ? firstSeason.id : null);
                 setActiveUnitIds([]);
             });
@@ -169,7 +245,7 @@ const App: React.FC = () => {
         setActiveUnitIds(newSeason ? newSeason.units.map(u => u.id) : []);
     };
     
-    // MODIFIED: File Operations to remember the last file
+    // File Operations
     const handleSaveFile = async () => {
         if (!window.showSaveFilePicker) {
             alert("Your browser does not support the File System Access API. Please use a modern browser like Chrome or Edge.");
@@ -177,13 +253,11 @@ const App: React.FC = () => {
         }
 
         try {
-            // Use the existing file handle if it exists, otherwise prompt the user to select a file.
             const handle = fileHandle || await window.showSaveFilePicker({
                 suggestedName: `conquerors-blade-data.json`,
                 types: [{ description: 'JSON Files', accept: { 'application/json': ['.json'] } }],
             });
 
-            // If a new file was selected (i.e., we didn't have a handle before), store it.
             if (!fileHandle) {
                 setFileHandle(handle);
             }
@@ -197,8 +271,7 @@ const App: React.FC = () => {
         } catch (err: any) {
             if (err.name !== 'AbortError') {
                 console.error('Error saving file:', err);
-                 // If permission is denied, the handle might be invalid. Clear it to re-prompt next time.
-                 if (err.name === 'NotAllowedError') {
+                if (err.name === 'NotAllowedError') {
                     setFileHandle(null);
                     setFileInfo('Save permission denied. Please try saving again.');
                 }
@@ -213,7 +286,7 @@ const App: React.FC = () => {
         }
         try {
             const [handle] = await window.showOpenFilePicker({
-                 types: [{ description: 'JSON Files', accept: { 'application/json': ['.json'] } }],
+                types: [{ description: 'JSON Files', accept: { 'application/json': ['.json'] } }],
             });
             const file = await handle.getFile();
             const content = await file.text();
@@ -222,7 +295,7 @@ const App: React.FC = () => {
             if (!Array.isArray(importedData)) throw new Error("Invalid file format.");
 
             showConfirmModal("Import Data?", "This will replace all current data. Do you want to continue?", () => {
-                // Basic data validation and ID generation
+                // Using 'any' here is a deliberate choice for sanitizing unknown external data.
                 const sanitizedData: Season[] = importedData.map((s: any) => ({
                     id: s.id || crypto.randomUUID(),
                     name: s.name || "Unnamed Season",
@@ -242,7 +315,6 @@ const App: React.FC = () => {
                 setActiveSeasonId(firstSeason?.id || null);
                 setActiveUnitIds(firstSeason?.units.map(u => u.id) || []);
                 
-                // MODIFIED: Store the handle of the imported file
                 setFileHandle(handle);
                 setFileInfo(`Imported from: ${handle.name}`);
             });
@@ -251,7 +323,7 @@ const App: React.FC = () => {
              if (err.name !== 'AbortError') {
                  console.error('Error importing file:', err);
                  alert(`Error during import: ${err.message}`);
-                 setFileHandle(null); // Clear handle on error
+                 setFileHandle(null);
              }
         }
     };
@@ -286,9 +358,8 @@ const App: React.FC = () => {
                     {/* File Controls */}
                     <div className="flex gap-2 items-center">
                         <p className="text-xs text-gray-500 self-center mr-2 hidden sm:block">{fileInfo}</p>
-                         {/* MODIFIED: Changed onClick to call the new handleSaveFile function */}
                          <button onClick={handleSaveFile} title="Save data" className={`flex items-center justify-center bg-gray-700/50 border border-gray-600 hover:bg-gray-700/80 text-gray-300 hover:text-white p-2 rounded-md transition-all duration-300 ${saveStatus === 'saving' ? 'border-green-500' : ''}`}>
-                             {saveStatus === 'saving' ? <CheckmarkIcon /> : <SaveIcon />}
+                              {saveStatus === 'saving' ? <CheckmarkIcon /> : <SaveIcon />}
                          </button>
                         <button onClick={handleImportFile} title="Import from .json file" className="flex items-center justify-center bg-gray-700/50 border border-gray-600 hover:bg-gray-700/80 text-gray-300 hover:text-white p-2 rounded-md transition-all duration-300">
                             <UploadIcon />
@@ -340,7 +411,7 @@ const App: React.FC = () => {
 
 // --- View Components ---
 
-const SeasonView = ({ season, activeUnitIds, setActiveUnitIds, setSeasons, showEditModal, showConfirmModal }) => {
+const SeasonView: React.FC<SeasonViewProps> = ({ season, activeUnitIds, setActiveUnitIds, setSeasons, showEditModal, showConfirmModal }) => {
     if (!season) {
         return (
             <div className="text-center text-gray-500 border-2 border-dashed border-gray-700 p-10 rounded-lg">
@@ -359,6 +430,13 @@ const SeasonView = ({ season, activeUnitIds, setActiveUnitIds, setSeasons, showE
             setSeasons(prev => prev.map(s => s.id === season.id ? { ...s, units: [...s.units, newUnit] } : s));
             setActiveUnitIds(prev => [...prev, newUnit.id]);
         }
+    };
+    
+    const handleAddUnitSubmit = (e: React.FormEvent<HTMLFormElement & { unitName: HTMLInputElement }>) => {
+        e.preventDefault();
+        const unitName = e.currentTarget.unitName.value;
+        handleAddUnit(unitName);
+        e.currentTarget.reset();
     };
     
     return (
@@ -388,7 +466,7 @@ const SeasonView = ({ season, activeUnitIds, setActiveUnitIds, setSeasons, showE
             {/* Add New Unit Form */}
             <div className="mt-6 border-t border-gray-700 pt-4">
                 <h3 className="text-xl font-semibold text-gray-100 mb-3">Add New Unit</h3>
-                <form onSubmit={e => { e.preventDefault(); handleAddUnit(e.currentTarget.unitName.value); e.currentTarget.reset(); }} className="flex flex-col sm:flex-row gap-3 items-center">
+                <form onSubmit={handleAddUnitSubmit} className="flex flex-col sm:flex-row gap-3 items-center">
                     <input name="unitName" type="text" placeholder="Unit name..." required className="flex-grow w-full sm:w-auto bg-gray-700 text-white placeholder-gray-400 p-2 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500" />
                     <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md transition duration-300 w-full sm:w-auto">Add</button>
                 </form>
@@ -397,8 +475,8 @@ const SeasonView = ({ season, activeUnitIds, setActiveUnitIds, setSeasons, showE
     );
 };
 
-const SearchResultsView = ({ results, setSeasons, showEditModal, showConfirmModal }) => {
-     if (results.length === 0) {
+const SearchResultsView: React.FC<SearchResultsViewProps> = ({ results, setSeasons, showEditModal, showConfirmModal }) => {
+   if (results.length === 0) {
         return (
             <div className="text-center text-gray-500 border-2 border-dashed border-gray-700 p-10 rounded-lg">
                 <h3 className="text-lg font-semibold">No Results</h3>
@@ -417,12 +495,12 @@ const SearchResultsView = ({ results, setSeasons, showEditModal, showConfirmModa
             <div className="space-y-6">
             {results.map(result => {
                 if (result.type === 'unit') {
-                     return <UnitCard key={result.unit.id} seasonId={result.season.id} unit={result.unit} setSeasons={setSeasons} showEditModal={showEditModal} showConfirmModal={showConfirmModal} seasonName={result.season.name} />;
+                    return <UnitCard key={result.unit.id} seasonId={result.season.id} unit={result.unit} setSeasons={setSeasons} showEditModal={showEditModal} showConfirmModal={showConfirmModal} seasonName={result.season.name} />;
                 }
                 if (result.type === 'quest') {
                     return (
                         <div key={result.unit.id} className="unit-container bg-gray-900/50 p-4 rounded-lg border-l-4 border-green-500">
-                             <div className="flex justify-between items-center mb-3">
+                            <div className="flex justify-between items-center mb-3">
                                 <div>
                                     <h4 className="text-xl font-semibold text-gray-100">{result.unit.name}</h4>
                                     <p className="text-sm text-yellow-500">{result.season.name}</p>
@@ -443,7 +521,7 @@ const SearchResultsView = ({ results, setSeasons, showEditModal, showConfirmModa
 
 // --- Component Primitives ---
 
-const UnitCard = ({ seasonId, unit, setSeasons, showEditModal, showConfirmModal, seasonName = null }) => {
+const UnitCard: React.FC<UnitCardProps> = ({ seasonId, unit, setSeasons, showEditModal, showConfirmModal, seasonName = null }) => {
     const handleAddQuest = (description: string) => {
         if(description) {
             const newQuest: Quest = { id: crypto.randomUUID(), description, completed: false };
@@ -463,6 +541,13 @@ const UnitCard = ({ seasonId, unit, setSeasons, showEditModal, showConfirmModal,
         showConfirmModal('Delete Unit?', `Are you sure you want to delete '${unit.name}' and all of its quests?`, () => {
             setSeasons(prev => prev.map(s => s.id === seasonId ? { ...s, units: s.units.filter(u => u.id !== unit.id) } : s ));
         });
+    };
+
+    const handleAddQuestSubmit = (e: React.FormEvent<HTMLFormElement & { questDesc: HTMLInputElement }>) => {
+        e.preventDefault();
+        const questDesc = e.currentTarget.questDesc.value;
+        handleAddQuest(questDesc);
+        e.currentTarget.reset();
     };
     
     const sortedQuests = useMemo(() => [...unit.quests].sort((a,b) => a.description.localeCompare(b.description)), [unit.quests]);
@@ -491,7 +576,7 @@ const UnitCard = ({ seasonId, unit, setSeasons, showEditModal, showConfirmModal,
 
             {/* Add Quest Form */}
             <div className="mt-4 ml-4 border-t border-gray-600 pt-3">
-                 <form onSubmit={e => { e.preventDefault(); handleAddQuest(e.currentTarget.questDesc.value); e.currentTarget.reset(); }} className="flex flex-col sm:flex-row gap-2 items-center">
+                 <form onSubmit={handleAddQuestSubmit} className="flex flex-col sm:flex-row gap-2 items-center">
                     <input name="questDesc" type="text" placeholder="Description of new quest..." required className="flex-grow w-full sm:w-auto bg-gray-600 text-white placeholder-gray-400 p-2 rounded-md border border-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500" />
                     <button type="submit" className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-3 rounded-md text-sm transition duration-300 w-full sm:w-auto">Add Quest</button>
                 </form>
@@ -500,7 +585,7 @@ const UnitCard = ({ seasonId, unit, setSeasons, showEditModal, showConfirmModal,
     );
 };
 
-const QuestItem = ({ quest, seasonId, unitId, setSeasons, showEditModal, showConfirmModal }) => {
+const QuestItem: React.FC<QuestItemProps> = ({ quest, seasonId, unitId, setSeasons, showEditModal, showConfirmModal }) => {
     
     const handleToggleQuest = (completed: boolean) => {
         setSeasons(prev => prev.map(s => s.id === seasonId
@@ -515,10 +600,10 @@ const QuestItem = ({ quest, seasonId, unitId, setSeasons, showEditModal, showCon
         showEditModal('Edit Quest', quest.description, newDesc => {
             if (newDesc) {
                  setSeasons(prev => prev.map(s => s.id === seasonId
-                    ? { ...s, units: s.units.map(u => u.id === unitId 
-                        ? { ...u, quests: u.quests.map(q => q.id === quest.id ? { ...q, description: newDesc } : q) }
-                        : u)
-                    } : s
+                     ? { ...s, units: s.units.map(u => u.id === unitId 
+                         ? { ...u, quests: u.quests.map(q => q.id === quest.id ? { ...q, description: newDesc } : q) }
+                         : u)
+                     } : s
                  ));
             }
         });
@@ -527,11 +612,11 @@ const QuestItem = ({ quest, seasonId, unitId, setSeasons, showEditModal, showCon
     const handleDeleteQuest = () => {
         showConfirmModal('Delete Quest?', 'Are you sure you want to delete this quest?', () => {
              setSeasons(prev => prev.map(s => s.id === seasonId
-                ? { ...s, units: s.units.map(u => u.id === unitId 
-                    ? { ...u, quests: u.quests.filter(q => q.id !== quest.id) }
-                    : u)
-                } : s
-            ));
+                 ? { ...s, units: s.units.map(u => u.id === unitId 
+                     ? { ...u, quests: u.quests.filter(q => q.id !== quest.id) }
+                     : u)
+                 } : s
+             ));
         });
     };
     
@@ -552,8 +637,9 @@ const QuestItem = ({ quest, seasonId, unitId, setSeasons, showEditModal, showCon
 
 // --- Modal Components ---
 
-const ConfirmationModal = ({ isOpen, title, message, onConfirm, onCancel }) => {
-    if (!isOpen) return null;
+const ConfirmationModal: React.FC<Partial<ConfirmationModalProps>> = ({ isOpen, title, message, onConfirm, onCancel }) => {
+    // Add guards to ensure required props exist before rendering
+    if (!isOpen || !onConfirm || !onCancel) return null;
 
     const handleConfirm = () => {
         onConfirm();
@@ -574,19 +660,20 @@ const ConfirmationModal = ({ isOpen, title, message, onConfirm, onCancel }) => {
     );
 };
 
-const EditModal = ({ isOpen, title, initialValue, onSave, onCancel }) => {
+const EditModal: React.FC<Partial<EditModalProps>> = ({ isOpen, title, initialValue = '', onSave, onCancel }) => {
     const [value, setValue] = useState(initialValue);
 
     useEffect(() => {
         if (isOpen) setValue(initialValue);
     }, [isOpen, initialValue]);
-
-    if (!isOpen) return null;
+    
+    // Add guards to ensure required props exist before rendering
+    if (!isOpen || !onSave || !onCancel) return null;
 
     const handleSave = () => {
         if (value.trim()) {
             onSave(value.trim());
-            onCancel();
+            onCancel(); // Close modal on save
         }
     };
     
