@@ -41,6 +41,7 @@ interface SearchResultsViewProps {
   setSeasons: SetSeasonsFn;
   showEditModal: ShowEditModalFn;
   showConfirmModal: ShowConfirmModalFn;
+  onNavigate: (seasonId: string, unitId: string) => void;
 }
 
 interface UnitCardProps {
@@ -50,6 +51,7 @@ interface UnitCardProps {
   showEditModal: ShowEditModalFn;
   showConfirmModal: ShowConfirmModalFn;
   seasonName?: string | null;
+  onNavigate?: (seasonId: string, unitId: string) => void;
 }
 
 interface QuestItemProps {
@@ -59,6 +61,7 @@ interface QuestItemProps {
   setSeasons: SetSeasonsFn;
   showEditModal: ShowEditModalFn;
   showConfirmModal: ShowConfirmModalFn;
+  onNavigate?: (seasonId: string, unitId: string) => void;
 }
 
 interface ConfirmationModalProps {
@@ -132,6 +135,13 @@ const CheckmarkIcon: React.FC<IconProps> = ({ size = 18, className = "text-green
     <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={className}>
         <polyline points="20 6 9 17 4 12"></polyline>
     </svg>
+);
+
+const MapPinIcon: React.FC<IconProps> = ({ size = 20, className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+    <circle cx="12" cy="10" r="3"></circle>
+  </svg>
 );
 
 // --- Main Application Component ---
@@ -243,6 +253,34 @@ const App: React.FC = () => {
         setActiveSeasonId(newId);
         const newSeason = seasons.find(s => s.id === newId);
         setActiveUnitIds(newSeason ? newSeason.units.map(u => u.id) : []);
+    };
+    
+    const handleNavigateToResult = (seasonId: string, unitId: string) => {
+        // Clear search queries
+        setUnitSearchQuery('');
+        setQuestSearchQuery('');
+        
+        // Set season
+        setActiveSeasonId(seasonId);
+        
+        // Ensure all units are visible contextually, especially the target
+        const targetSeason = seasons.find(s => s.id === seasonId);
+        if (targetSeason) {
+            setActiveUnitIds(targetSeason.units.map(u => u.id));
+        }
+
+        // Scroll to the target unit after state has updated and DOM rendered
+        setTimeout(() => {
+            const element = document.getElementById(unitId);
+            if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                // Optional: flash animation/highlight
+                element.classList.add('ring-4', 'ring-yellow-500/50', 'ring-offset-2', 'ring-offset-gray-900');
+                setTimeout(() => {
+                    element.classList.remove('ring-4', 'ring-yellow-500/50', 'ring-offset-2', 'ring-offset-gray-900');
+                }, 2000);
+            }
+        }, 100);
     };
     
     // File Operations
@@ -395,7 +433,7 @@ const App: React.FC = () => {
                         <p className="mt-4 text-sm">If you don't have a file, you can start from scratch by creating a new season.</p>
                     </div>
                 ) : isSearching ? (
-                    <SearchResultsView results={searchResults} setSeasons={handleSetSeasons} showEditModal={showEditModal} showConfirmModal={showConfirmModal} />
+                    <SearchResultsView results={searchResults} setSeasons={handleSetSeasons} showEditModal={showEditModal} showConfirmModal={showConfirmModal} onNavigate={handleNavigateToResult} />
                 ) : (
                     <SeasonView season={activeSeason} activeUnitIds={activeUnitIds} setActiveUnitIds={setActiveUnitIds} setSeasons={handleSetSeasons} showEditModal={showEditModal} showConfirmModal={showConfirmModal}/>
                 )}
@@ -475,7 +513,7 @@ const SeasonView: React.FC<SeasonViewProps> = ({ season, activeUnitIds, setActiv
     );
 };
 
-const SearchResultsView: React.FC<SearchResultsViewProps> = ({ results, setSeasons, showEditModal, showConfirmModal }) => {
+const SearchResultsView: React.FC<SearchResultsViewProps> = ({ results, setSeasons, showEditModal, showConfirmModal, onNavigate }) => {
    if (results.length === 0) {
         return (
             <div className="text-center text-gray-500 border-2 border-dashed border-gray-700 p-10 rounded-lg">
@@ -495,19 +533,22 @@ const SearchResultsView: React.FC<SearchResultsViewProps> = ({ results, setSeaso
             <div className="space-y-6">
             {results.map(result => {
                 if (result.type === 'unit') {
-                    return <UnitCard key={result.unit.id} seasonId={result.season.id} unit={result.unit} setSeasons={setSeasons} showEditModal={showEditModal} showConfirmModal={showConfirmModal} seasonName={result.season.name} />;
+                    return <UnitCard key={result.unit.id} seasonId={result.season.id} unit={result.unit} setSeasons={setSeasons} showEditModal={showEditModal} showConfirmModal={showConfirmModal} seasonName={result.season.name} onNavigate={onNavigate} />;
                 }
                 if (result.type === 'quest') {
                     return (
                         <div key={result.unit.id} className="unit-container bg-gray-900/50 p-4 rounded-lg border-l-4 border-green-500">
                             <div className="flex justify-between items-center mb-3">
-                                <div>
+                                <div className="flex-grow">
                                     <h4 className="text-xl font-semibold text-gray-100">{result.unit.name}</h4>
                                     <p className="text-sm text-yellow-500">{result.season.name}</p>
                                 </div>
+                                <button onClick={() => onNavigate(result.season.id, result.unit.id)} title="Go to unit" className="bg-gray-700/50 hover:bg-gray-700 text-green-400 font-bold p-2 rounded-md transition duration-300">
+                                    <MapPinIcon size={18} />
+                                </button>
                             </div>
                             <div className="quests-container ml-4 space-y-2">
-                                {result.quests.map(quest => <QuestItem key={quest.id} seasonId={result.season.id} unitId={result.unit.id} quest={quest} setSeasons={setSeasons} showEditModal={showEditModal} showConfirmModal={showConfirmModal} />)}
+                                {result.quests.map(quest => <QuestItem key={quest.id} seasonId={result.season.id} unitId={result.unit.id} quest={quest} setSeasons={setSeasons} showEditModal={showEditModal} showConfirmModal={showConfirmModal} onNavigate={onNavigate} />)}
                             </div>
                         </div>
                     );
@@ -521,7 +562,7 @@ const SearchResultsView: React.FC<SearchResultsViewProps> = ({ results, setSeaso
 
 // --- Component Primitives ---
 
-const UnitCard: React.FC<UnitCardProps> = ({ seasonId, unit, setSeasons, showEditModal, showConfirmModal, seasonName = null }) => {
+const UnitCard: React.FC<UnitCardProps> = ({ seasonId, unit, setSeasons, showEditModal, showConfirmModal, seasonName = null, onNavigate }) => {
     const handleAddQuest = (description: string) => {
         if(description) {
             const newQuest: Quest = { id: crypto.randomUUID(), description, completed: false };
@@ -553,14 +594,19 @@ const UnitCard: React.FC<UnitCardProps> = ({ seasonId, unit, setSeasons, showEdi
     const sortedQuests = useMemo(() => [...unit.quests].sort((a,b) => a.description.localeCompare(b.description)), [unit.quests]);
 
     return (
-        <div className="unit-container bg-gray-900/50 p-4 rounded-lg border-l-4 border-blue-500">
+        <div id={unit.id} className="unit-container bg-gray-900/50 p-4 rounded-lg border-l-4 border-blue-500 transition-all duration-500">
             {/* Header */}
             <div className="flex justify-between items-center mb-3">
-                <div>
+                <div className="flex-grow">
                     <h4 className="text-xl font-semibold text-gray-100">{unit.name}</h4>
                     {seasonName && <p className="text-sm text-yellow-500 -mt-1">{seasonName}</p>}
                 </div>
                 <div className="flex items-center gap-2">
+                    {onNavigate && (
+                        <button onClick={() => onNavigate(seasonId, unit.id)} title="Go to unit" className="bg-gray-700/50 hover:bg-gray-700 text-blue-400 font-bold p-1.5 rounded-md transition duration-300">
+                            <MapPinIcon size={16} />
+                        </button>
+                    )}
                     <button onClick={handleEditUnit} className="action-icon text-gray-500 hover:text-yellow-400 transition-colors p-1 rounded-full"><EditIcon size={16} /></button>
                     <button onClick={handleDeleteUnit} className="action-icon text-gray-500 hover:text-red-500 transition-colors p-1 rounded-full"><DeleteIcon size={20} /></button>
                 </div>
@@ -569,7 +615,7 @@ const UnitCard: React.FC<UnitCardProps> = ({ seasonId, unit, setSeasons, showEdi
             {/* Quests List */}
             <div className="quests-container ml-4 space-y-2">
                 {sortedQuests.length > 0 
-                    ? sortedQuests.map(q => <QuestItem key={q.id} quest={q} seasonId={seasonId} unitId={unit.id} setSeasons={setSeasons} showEditModal={showEditModal} showConfirmModal={showConfirmModal} />)
+                    ? sortedQuests.map(q => <QuestItem key={q.id} quest={q} seasonId={seasonId} unitId={unit.id} setSeasons={setSeasons} showEditModal={showEditModal} showConfirmModal={showConfirmModal} onNavigate={onNavigate} />)
                     : <p className="text-xs text-gray-500">No quests added.</p>
                 }
             </div>
@@ -585,7 +631,7 @@ const UnitCard: React.FC<UnitCardProps> = ({ seasonId, unit, setSeasons, showEdi
     );
 };
 
-const QuestItem: React.FC<QuestItemProps> = ({ quest, seasonId, unitId, setSeasons, showEditModal, showConfirmModal }) => {
+const QuestItem: React.FC<QuestItemProps> = ({ quest, seasonId, unitId, setSeasons, showEditModal, showConfirmModal, onNavigate }) => {
     
     const handleToggleQuest = (completed: boolean) => {
         setSeasons(prev => prev.map(s => s.id === seasonId
@@ -628,6 +674,11 @@ const QuestItem: React.FC<QuestItemProps> = ({ quest, seasonId, unitId, setSeaso
             <input type="checkbox" checked={quest.completed} onChange={e => handleToggleQuest(e.target.checked)} className="h-5 w-5 rounded bg-gray-600 border-gray-500 text-yellow-500 focus:ring-yellow-600 cursor-pointer flex-shrink-0" />
             <label onClick={() => handleToggleQuest(!quest.completed)} className={labelClasses}>{quest.description}</label>
             <div className="flex items-center gap-1">
+                {onNavigate && (
+                    <button onClick={() => onNavigate(seasonId, unitId)} title="Go to unit" className="action-icon text-gray-500 hover:text-blue-400 transition-colors p-1 rounded-full">
+                        <MapPinIcon size={14} />
+                    </button>
+                )}
                 <button onClick={handleEditQuest} className="action-icon text-gray-500 hover:text-yellow-400 transition-colors p-1 rounded-full"><EditIcon size={14} /></button>
                 <button onClick={handleDeleteQuest} className="action-icon text-gray-500 hover:text-red-500 transition-colors p-1 rounded-full"><DeleteIcon size={18}/></button>
             </div>
