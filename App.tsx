@@ -204,7 +204,10 @@ const App: React.FC = () => {
             const query = unitSearchQuery.toLowerCase();
             return seasons.flatMap(season =>
                 season.units
-                    .filter(unit => unit.name.toLowerCase().startsWith(query))
+                    .filter(unit => {
+                         const words = unit.name.toLowerCase().split(/\s+/);
+                         return words.some(word => word.startsWith(query));
+                    })
                     .map(unit => ({ type: 'unit' as const, season, unit }))
             ).sort((a,b) => a.unit.name.localeCompare(b.unit.name));
         }
@@ -212,7 +215,10 @@ const App: React.FC = () => {
             const query = questSearchQuery.toLowerCase();
             return seasons.flatMap(season =>
                 season.units.flatMap(unit => {
-                    const matchingQuests = unit.quests.filter(quest => quest.description.toLowerCase().startsWith(query));
+                    const matchingQuests = unit.quests.filter(quest => {
+                         const words = quest.description.toLowerCase().split(/\s+/);
+                         return words.some(word => word.startsWith(query));
+                    });
                     return matchingQuests.length > 0
                         ? [{ type: 'quest' as const, season, unit, quests: matchingQuests }]
                         : [];
