@@ -15,6 +15,7 @@ export interface Season {
   id: string;
   name: string;
   units: Unit[];
+  createdAt?: number;
 }
 
 // Add File System Access API types for browsers that support it.

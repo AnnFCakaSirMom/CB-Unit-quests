@@ -144,6 +144,29 @@ const MapPinIcon: React.FC<IconProps> = ({ size = 20, className }) => (
   </svg>
 );
 
+const ChevronUpIcon: React.FC<IconProps> = ({ size = 20, className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <polyline points="18 15 12 9 6 15"></polyline>
+  </svg>
+);
+
+const ChevronDownIcon: React.FC<IconProps> = ({ size = 20, className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <polyline points="6 9 12 15 18 9"></polyline>
+  </svg>
+);
+
+const ListIcon: React.FC<IconProps> = ({ size = 20, className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <line x1="8" y1="6" x2="21" y2="6"></line>
+    <line x1="8" y1="12" x2="21" y2="12"></line>
+    <line x1="8" y1="18" x2="21" y2="18"></line>
+    <line x1="3" y1="6" x2="3.01" y2="6"></line>
+    <line x1="3" y1="12" x2="3.01" y2="12"></line>
+    <line x1="3" y1="18" x2="3.01" y2="18"></line>
+  </svg>
+);
+
 // --- Main Application Component ---
 const App: React.FC = () => {
     // --- State Management ---
@@ -154,7 +177,7 @@ const App: React.FC = () => {
     const [unitSearchQuery, setUnitSearchQuery] = useState('');
     const [questSearchQuery, setQuestSearchQuery] = useState('');
 
-    const [modal, setModal] = useState<'confirm' | 'edit' | null>(null);
+    const [modal, setModal] = useState<'confirm' | 'edit' | 'order' | null>(null);
     // Note: This state holds props for the active modal. Using Partial avoids errors when no modal is open.
     const [modalProps, setModalProps] = useState<Partial<ConfirmationModalProps & EditModalProps>>({});
     
@@ -165,7 +188,14 @@ const App: React.FC = () => {
 
     // --- Derived State & Memoization ---
     const activeSeason = useMemo(() => seasons.find(s => s.id === activeSeasonId), [seasons, activeSeasonId]);
-    const sortedSeasons = useMemo(() => [...seasons].sort((a, b) => a.name.localeCompare(b.name)), [seasons]);
+    const sortedSeasons = useMemo(() => {
+        return [...seasons].sort((a, b) => {
+            const timeA = a.createdAt || 0;
+            const timeB = b.createdAt || 0;
+            if (timeA !== timeB) return timeB - timeA; // Newest first
+            return a.name.localeCompare(b.name); // Fallback to name
+        });
+    }, [seasons]);
     
     const isSearching = unitSearchQuery.length > 0 || questSearchQuery.length > 0;
 
@@ -215,7 +245,12 @@ const App: React.FC = () => {
     const handleAddSeason = () => {
         showEditModal('Add New Season', '', name => {
             if (name) {
-                const newSeason: Season = { id: crypto.randomUUID(), name, units: [] };
+                const newSeason: Season = { 
+                    id: crypto.randomUUID(), 
+                    name, 
+                    units: [],
+                    createdAt: Date.now()
+                };
                 handleSetSeasons(prev => [...prev, newSeason]);
                 setActiveSeasonId(newSeason.id);
                 setActiveUnitIds([]);
@@ -255,6 +290,26 @@ const App: React.FC = () => {
         setActiveUnitIds(newSeason ? newSeason.units.map(u => u.id) : []);
     };
     
+    const handleSwapSeasonOrder = (season1Id: string, season2Id: string) => {
+        handleSetSeasons(prev => {
+            const s1Index = prev.findIndex(s => s.id === season1Id);
+            const s2Index = prev.findIndex(s => s.id === season2Id);
+            if (s1Index === -1 || s2Index === -1) return prev;
+            
+            const newSeasons = [...prev];
+            // Ensure both have createdAt for comparison
+            if (!newSeasons[s1Index].createdAt) newSeasons[s1Index].createdAt = Date.now() - s1Index;
+            if (!newSeasons[s2Index].createdAt) newSeasons[s2Index].createdAt = Date.now() - s2Index;
+
+            // Swap their createdAt values
+            const temp = newSeasons[s1Index].createdAt;
+            newSeasons[s1Index].createdAt = newSeasons[s2Index].createdAt;
+            newSeasons[s2Index].createdAt = temp;
+            
+            return newSeasons;
+        });
+    };
+
     const handleNavigateToResult = (seasonId: string, unitId: string) => {
         // Clear search queries
         setUnitSearchQuery('');
@@ -333,10 +388,12 @@ const App: React.FC = () => {
             if (!Array.isArray(importedData)) throw new Error("Invalid file format.");
 
             showConfirmModal("Import Data?", "This will replace all current data. Do you want to continue?", () => {
+                const now = Date.now();
                 // Using 'any' here is a deliberate choice for sanitizing unknown external data.
-                const sanitizedData: Season[] = importedData.map((s: any) => ({
+                const sanitizedData: Season[] = importedData.map((s: any, index: number) => ({
                     id: s.id || crypto.randomUUID(),
                     name: s.name || "Unnamed Season",
+                    createdAt: s.createdAt || (now - (importedData.length - index) * 1000), // Preserve relative order if missing
                     units: (s.units || []).map((u: any) => ({
                         id: u.id || crypto.randomUUID(),
                         name: u.name || "Unnamed Unit",
@@ -349,9 +406,10 @@ const App: React.FC = () => {
                 }));
                 
                 setSeasons(sanitizedData);
-                const firstSeason = [...sanitizedData].sort((a,b) => a.name.localeCompare(b.name))[0];
-                setActiveSeasonId(firstSeason?.id || null);
-                setActiveUnitIds(firstSeason?.units.map(u => u.id) || []);
+                // Select the newest one based on createdAt
+                const newestSeason = [...sanitizedData].sort((a,b) => (b.createdAt || 0) - (a.createdAt || 0))[0];
+                setActiveSeasonId(newestSeason?.id || null);
+                setActiveUnitIds(newestSeason?.units.map(u => u.id) || []);
                 
                 setFileHandle(handle);
                 setFileInfo(`Imported from: ${handle.name}`);
@@ -415,6 +473,7 @@ const App: React.FC = () => {
                             <option value="" disabled>Select a season...</option>
                             {sortedSeasons.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                         </select>
+                        <button onClick={() => setModal('order')} title="Manage Season Order" className="bg-gray-700/50 hover:bg-gray-700 text-yellow-500 font-bold p-2.5 rounded-md border border-gray-600 transition duration-300" disabled={seasons.length < 2}><ListIcon /></button>
                         <button onClick={handleAddSeason} title="Add New Season" className="bg-yellow-600 hover:bg-yellow-700 text-white font-bold p-2.5 rounded-md transition duration-300"><PlusIcon /></button>
                         {activeSeason && <>
                             <button onClick={handleEditSeason} className="text-gray-500 hover:text-yellow-400 transition-colors p-2 rounded-full"><EditIcon /></button>
@@ -442,6 +501,7 @@ const App: React.FC = () => {
             {/* --- Modals --- */}
             <ConfirmationModal isOpen={modal === 'confirm'} onCancel={closeModal} {...modalProps} />
             <EditModal isOpen={modal === 'edit'} onCancel={closeModal} {...modalProps} />
+            <ManageOrderModal isOpen={modal === 'order'} seasons={sortedSeasons} onSwap={handleSwapSeasonOrder} onClose={closeModal} />
 
         </div>
     );
@@ -742,6 +802,59 @@ const EditModal: React.FC<Partial<EditModalProps>> = ({ isOpen, title, initialVa
                 <div className="flex justify-end gap-4 mt-6">
                     <button onClick={onCancel} className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-md transition duration-300">Cancel</button>
                     <button onClick={handleSave} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-md transition duration-300">Save</button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// --- Order Modal Component ---
+
+interface ManageOrderModalProps {
+    isOpen: boolean;
+    seasons: Season[];
+    onSwap: (id1: string, id2: string) => void;
+    onClose: () => void;
+}
+
+const ManageOrderModal: React.FC<ManageOrderModalProps> = ({ isOpen, seasons, onSwap, onClose }) => {
+    if (!isOpen) return null;
+
+    return (
+        <div className="modal-overlay fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50 transition-opacity duration-300">
+            <div className="modal-container bg-gray-800 rounded-lg shadow-xl w-full max-w-md p-6 border border-gray-700 max-h-[80vh] flex flex-col">
+                <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-xl font-bold text-white">Arrange Seasons</h3>
+                    <button onClick={onClose} className="text-gray-400 hover:text-white"><DeleteIcon size={24}/></button>
+                </div>
+                <p className="text-gray-400 text-sm mb-4">Move seasons up to make them appear newer (at the top of the selector).</p>
+                <div className="flex-grow overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+                    {seasons.map((season, index) => (
+                        <div key={season.id} className="flex items-center justify-between bg-gray-700/50 p-3 rounded-md border border-gray-600">
+                            <span className="text-white font-medium truncate flex-grow mr-4">{season.name}</span>
+                            <div className="flex gap-1 flex-shrink-0">
+                                <button 
+                                    onClick={() => onSwap(season.id, seasons[index - 1].id)} 
+                                    disabled={index === 0}
+                                    title="Move Up"
+                                    className="p-1 text-gray-400 hover:text-yellow-500 disabled:opacity-20 disabled:hover:text-gray-400 transition-colors"
+                                >
+                                    <ChevronUpIcon />
+                                </button>
+                                <button 
+                                    onClick={() => onSwap(season.id, seasons[index + 1].id)} 
+                                    disabled={index === seasons.length - 1}
+                                    title="Move Down"
+                                    className="p-1 text-gray-400 hover:text-yellow-500 disabled:opacity-20 disabled:hover:text-gray-400 transition-colors"
+                                >
+                                    <ChevronDownIcon />
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+                <div className="flex justify-end mt-6">
+                    <button onClick={onClose} className="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-6 rounded-md transition duration-300">Done</button>
                 </div>
             </div>
         </div>
