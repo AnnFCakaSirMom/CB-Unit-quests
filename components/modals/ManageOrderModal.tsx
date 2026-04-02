@@ -13,23 +13,24 @@ export const ManageOrderModal: React.FC<ManageOrderModalProps> = ({ isOpen, seas
     if (!isOpen) return null;
 
     return (
-        <div className="modal-overlay fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50 transition-opacity duration-300">
-            <div className="modal-container bg-gray-800 rounded-lg shadow-xl w-full max-w-md p-6 border border-gray-700 max-h-[80vh] flex flex-col">
-                <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-xl font-bold text-white">Arrange Seasons</h3>
-                    <button onClick={onClose} className="text-gray-400 hover:text-white"><DeleteIcon size={24}/></button>
+        <div className="modal modal-open">
+            <div className="modal-box bg-base-200 border border-base-300 shadow-xl max-h-[80vh] flex flex-col p-6">
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="font-bold text-lg text-base-content">Arrange Seasons</h3>
+                    <button onClick={onClose} className="btn btn-ghost btn-sm btn-circle"><DeleteIcon size={20}/></button>
                 </div>
-                <p className="text-gray-400 text-sm mb-4">Move seasons up to make them appear newer (at the top of the selector).</p>
+                <p className="text-base-content/70 text-sm mb-4">Move seasons up to make them appear newer (at the top of the selector).</p>
+                
                 <div className="flex-grow overflow-y-auto space-y-2 pr-2 custom-scrollbar">
                     {seasons.map((season, index) => (
-                        <div key={season.id} className="flex items-center justify-between bg-gray-700/50 p-3 rounded-md border border-gray-600">
-                            <span className="text-white font-medium truncate flex-grow mr-4">{season.name}</span>
+                        <div key={season.id} className="flex items-center justify-between bg-base-300 p-2 rounded-md border border-base-100">
+                            <span className="text-base-content font-medium truncate flex-grow mr-4 ml-2">{season.name}</span>
                             <div className="flex gap-1 flex-shrink-0">
                                 <button 
                                     onClick={() => onSwap(season.id, seasons[index - 1].id)} 
                                     disabled={index === 0}
                                     title="Move Up"
-                                    className="p-1 text-gray-400 hover:text-yellow-500 disabled:opacity-20 disabled:hover:text-gray-400 transition-colors"
+                                    className="btn btn-circle btn-xs btn-ghost text-base-content/50 hover:text-primary"
                                 >
                                     <ChevronUpIcon />
                                 </button>
@@ -37,7 +38,7 @@ export const ManageOrderModal: React.FC<ManageOrderModalProps> = ({ isOpen, seas
                                     onClick={() => onSwap(season.id, seasons[index + 1].id)} 
                                     disabled={index === seasons.length - 1}
                                     title="Move Down"
-                                    className="p-1 text-gray-400 hover:text-yellow-500 disabled:opacity-20 disabled:hover:text-gray-400 transition-colors"
+                                    className="btn btn-circle btn-xs btn-ghost text-base-content/50 hover:text-primary"
                                 >
                                     <ChevronDownIcon />
                                 </button>
@@ -45,8 +46,9 @@ export const ManageOrderModal: React.FC<ManageOrderModalProps> = ({ isOpen, seas
                         </div>
                     ))}
                 </div>
-                <div className="flex justify-end mt-6">
-                    <button onClick={onClose} className="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-6 rounded-md transition duration-300">Done</button>
+                
+                <div className="modal-action mt-6 justify-end">
+                    <button onClick={onClose} className="btn btn-primary px-8">Done</button>
                 </div>
             </div>
         </div>

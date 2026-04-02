@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Season } from './types';
-import { FlameIcon, SaveIcon, UploadIcon, SearchIcon, ListIcon, PlusIcon, EditIcon, DeleteIcon, CheckmarkIcon } from './components/common/Icons';
+import { FlameIcon, SaveIcon, UploadIcon, SearchIcon, ListIcon, PlusIcon, EditIcon, DeleteIcon } from './components/common/Icons';
 import { SeasonProvider, useSeasons } from './context/SeasonContext';
 import { useUnsavedChanges } from './hooks/useUnsavedChanges';
 import { SeasonView } from './components/season/SeasonView';
@@ -193,22 +193,22 @@ const AppContent: React.FC = () => {
                 <div className="flex flex-wrap gap-4 items-center justify-between">
                     <div className="flex-grow grid sm:grid-cols-2 gap-4">
                         <div className="relative">
-                            <input type="search" value={unitSearchQuery} onChange={e => { setUnitSearchQuery(e.target.value); setQuestSearchQuery(''); }} placeholder="Search unit..." className="w-full bg-gray-700 text-white placeholder-gray-400 p-2.5 pl-10 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"/>
+                            <input type="search" value={unitSearchQuery} onChange={e => { setUnitSearchQuery(e.target.value); setQuestSearchQuery(''); }} placeholder="Search unit..." className="input input-bordered w-full pl-10 focus:border-info outline-none bg-base-300"/>
                             <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none"><SearchIcon /></div>
                         </div>
                         <div className="relative">
-                            <input type="search" value={questSearchQuery} onChange={e => { setQuestSearchQuery(e.target.value); setUnitSearchQuery(''); }} placeholder="Search quest..." className="w-full bg-gray-700 text-white placeholder-gray-400 p-2.5 pl-10 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-500"/>
+                            <input type="search" value={questSearchQuery} onChange={e => { setQuestSearchQuery(e.target.value); setUnitSearchQuery(''); }} placeholder="Search quest..." className="input input-bordered w-full pl-10 focus:border-info outline-none bg-base-300"/>
                             <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none"><SearchIcon /></div>
                         </div>
                     </div>
 
                     <div className="flex gap-2 items-center">
-                        <p className="text-xs text-gray-500 self-center mr-2 hidden sm:block">{fileInfo}</p>
-                         <button onClick={handleSaveFile} title="Save data" className={`flex relative items-center justify-center bg-gray-700/50 border border-gray-600 hover:bg-gray-700/80 text-gray-300 hover:text-white p-2 rounded-md transition-all duration-300 ${saveStatus === 'saving' ? 'border-green-500' : ''}`}>
-                              {isDirty && <span className="absolute -top-1 -right-1 flex h-3 w-3"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span><span className="relative inline-flex rounded-full h-3 w-3 bg-yellow-500"></span></span>}
-                              {saveStatus === 'saving' ? <CheckmarkIcon /> : <SaveIcon />}
+                        <p className="text-xs text-base-content/50 self-center mr-2 hidden sm:block">{fileInfo}</p>
+                         <button onClick={handleSaveFile} title="Save data" className={`btn ${saveStatus === 'saving' ? 'btn-info' : 'btn-ghost btn-outline'} relative gap-2`}>
+                              {isDirty && <span className="absolute -top-1 -right-1 flex h-3 w-3"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-info opacity-75"></span><span className="relative inline-flex rounded-full h-3 w-3 bg-info"></span></span>}
+                              {saveStatus === 'saving' ? <><span className="loading loading-spinner loading-xs"></span></> : <SaveIcon />}
                          </button>
-                        <button onClick={handleImportFile} title="Import from .json file" className="flex items-center justify-center bg-gray-700/50 border border-gray-600 hover:bg-gray-700/80 text-gray-300 hover:text-white p-2 rounded-md transition-all duration-300">
+                        <button onClick={handleImportFile} title="Import from .json file" className="btn btn-ghost btn-outline">
                             <UploadIcon />
                         </button>
                     </div>
@@ -216,18 +216,19 @@ const AppContent: React.FC = () => {
             </div>
 
             {!isSearching && (
-                 <div className="section-card bg-gray-800 border border-gray-700 p-5 rounded-lg mb-8">
-                    <h2 className="text-2xl font-semibold mb-4 text-gray-100">Select Season</h2>
-                    <div className="flex flex-col sm:flex-row gap-3 items-center">
-                        <select value={activeSeasonId || ''} onChange={handleSeasonChange} className="flex-grow w-full bg-gray-700 text-white p-2.5 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-yellow-500" disabled={seasons.length === 0}>
+                 <div className="card bg-base-200 border border-base-300 p-4 mb-8 shadow-sm">
+                    <h2 className="text-xl font-semibold mb-3 text-base-content">Select Season</h2>
+                    <div className="flex flex-col sm:flex-row gap-2 items-center">
+                        <select value={activeSeasonId || ''} onChange={handleSeasonChange} className="select select-bordered w-full flex-grow bg-base-300 focus:border-info outline-none" disabled={seasons.length === 0}>
                             <option value="" disabled>Select a season...</option>
                             {sortedSeasons.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                         </select>
-                        <button onClick={() => setModal('order')} title="Manage Season Order" className="bg-gray-700/50 hover:bg-gray-700 text-yellow-500 font-bold p-2.5 rounded-md border border-gray-600 transition duration-300" disabled={seasons.length < 2}><ListIcon /></button>
-                        <button onClick={handleAddSeason} title="Add New Season" className="bg-yellow-600 hover:bg-yellow-700 text-white font-bold p-2.5 rounded-md transition duration-300"><PlusIcon /></button>
+                        <button onClick={() => setModal('order')} title="Manage Season Order" className="btn btn-outline" disabled={seasons.length < 2}><ListIcon /></button>
+                        <button onClick={handleAddSeason} title="Add New Season" className="btn btn-ghost btn-outline border-base-content/20 hover:bg-info hover:text-white"><PlusIcon /></button>
                         {activeSeason && <>
-                            <button onClick={handleEditSeason} className="text-gray-500 hover:text-yellow-400 transition-colors p-2 rounded-full"><EditIcon /></button>
-                            <button onClick={handleDeleteSeason} className="text-gray-500 hover:text-red-500 transition-colors p-2 rounded-full"><DeleteIcon /></button>
+                            <div className="divider divider-horizontal mx-0"></div>
+                            <button onClick={handleEditSeason} title="Edit Season Name" className="btn btn-ghost btn-circle btn-sm text-base-content/70 hover:text-primary"><EditIcon size={18} /></button>
+                            <button onClick={handleDeleteSeason} title="Delete Season" className="btn btn-ghost btn-circle btn-sm text-base-content/70 hover:text-error"><DeleteIcon size={20} /></button>
                         </> }
                     </div>
                  </div>

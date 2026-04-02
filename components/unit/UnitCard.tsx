@@ -43,37 +43,37 @@ export const UnitCard: React.FC<UnitCardProps> = ({ seasonId, unit, showEditModa
     const sortedQuests = useMemo(() => [...unit.quests].sort((a,b) => a.description.localeCompare(b.description)), [unit.quests]);
 
     return (
-        <div id={unit.id} className="unit-container bg-gray-900/50 p-4 rounded-lg border-l-4 border-blue-500 transition-all duration-500">
+        <div id={unit.id} className="card bg-base-200 shadow-sm border-l-4 border-secondary p-4 transition-all duration-500 mb-4">
             {/* Header */}
             <div className="flex justify-between items-center mb-3">
                 <div className="flex-grow">
-                    <h4 className="text-xl font-semibold text-gray-100">{unit.name}</h4>
-                    {seasonName && <p className="text-sm text-yellow-500 -mt-1">{seasonName}</p>}
+                    <h4 className="text-xl font-bold text-base-content m-0 leading-tight">{unit.name}</h4>
+                    {seasonName && <p className="text-sm text-primary m-0 mt-1 font-semibold">{seasonName}</p>}
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
                     {onNavigate && (
-                        <button onClick={() => onNavigate(seasonId, unit.id)} title="Go to unit" className="bg-gray-700/50 hover:bg-gray-700 text-blue-400 font-bold p-1.5 rounded-md transition duration-300">
+                        <button onClick={() => onNavigate(seasonId, unit.id)} title="Go to unit" className="btn btn-ghost btn-sm btn-circle text-info">
                             <MapPinIcon size={16} />
                         </button>
                     )}
-                    <button onClick={handleEditUnit} className="action-icon text-gray-500 hover:text-yellow-400 transition-colors p-1 rounded-full"><EditIcon size={16} /></button>
-                    <button onClick={handleDeleteUnit} className="action-icon text-gray-500 hover:text-red-500 transition-colors p-1 rounded-full"><DeleteIcon size={20} /></button>
+                    <button onClick={handleEditUnit} title="Edit Unit Name" className="btn btn-ghost btn-sm btn-circle text-base-content/50 hover:text-primary"><EditIcon size={18} /></button>
+                    <button onClick={handleDeleteUnit} title="Delete Unit" className="btn btn-ghost btn-sm btn-circle text-base-content/50 hover:text-error"><DeleteIcon size={20} /></button>
                 </div>
             </div>
 
             {/* Quests List */}
-            <div className="quests-container ml-4 space-y-2">
+            <div className="quests-container ml-2 space-y-1">
                 {sortedQuests.length > 0 
                     ? sortedQuests.map(q => <QuestItem key={q.id} quest={q} seasonId={seasonId} unitId={unit.id} showEditModal={showEditModal} showConfirmModal={showConfirmModal} onNavigate={onNavigate} />)
-                    : <p className="text-xs text-gray-500">No quests added.</p>
+                    : <p className="text-sm text-base-content/50 italic py-2 pl-2">No quests added.</p>
                 }
             </div>
 
             {/* Add Quest Form */}
-            <div className="mt-4 ml-4 border-t border-gray-600 pt-3">
-                 <form onSubmit={handleAddQuestSubmit} className="flex flex-col sm:flex-row gap-2 items-center">
-                    <input name="questDesc" type="text" placeholder="Description of new quest..." required className="flex-grow w-full sm:w-auto bg-gray-600 text-white placeholder-gray-400 p-2 rounded-md border border-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500" />
-                    <button type="submit" className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-3 rounded-md text-sm transition duration-300 w-full sm:w-auto">Add Quest</button>
+            <div className="mt-4 pt-3 border-t border-base-300">
+                 <form onSubmit={handleAddQuestSubmit} className="flex flex-col sm:flex-row gap-2 items-center join">
+                    <input name="questDesc" type="text" placeholder="Description of new quest..." required className="input input-sm input-bordered join-item flex-grow w-full bg-base-300" />
+                    <button type="submit" className="btn btn-sm btn-success join-item w-full sm:w-auto text-white">Add Quest</button>
                 </form>
             </div>
         </div>

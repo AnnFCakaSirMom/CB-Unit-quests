@@ -34,21 +34,21 @@ export const QuestItem: React.FC<QuestItemProps> = ({ quest, seasonId, unitId, s
         });
     };
     
-    const questClasses = `quest-item flex items-center gap-3 p-2 rounded-md transition-colors hover:bg-gray-700 ${quest.completed ? 'completed-quest' : ''}`;
-    const labelClasses = `flex-grow cursor-pointer ${quest.completed ? 'line-through text-gray-500' : ''}`;
+    const questClasses = `flex items-center gap-3 p-1.5 rounded-md transition-colors ${quest.completed ? 'opacity-50' : 'hover:bg-base-300'}`;
+    const labelClasses = `flex-grow cursor-pointer text-sm font-medium transition-all ${quest.completed ? 'line-through text-base-content/50' : 'text-base-content'}`;
 
     return (
         <div className={questClasses}>
-            <input type="checkbox" checked={quest.completed} onChange={e => handleToggleQuest(e.target.checked)} className="h-5 w-5 rounded bg-gray-600 border-gray-500 text-yellow-500 focus:ring-yellow-600 cursor-pointer flex-shrink-0" />
+            <input type="checkbox" checked={quest.completed} onChange={e => handleToggleQuest(e.target.checked)} className="checkbox checkbox-sm checkbox-info rounded-sm" />
             <label onClick={() => handleToggleQuest(!quest.completed)} className={labelClasses}>{quest.description}</label>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-0.5">
                 {onNavigate && (
-                    <button onClick={() => onNavigate(seasonId, unitId)} title="Go to unit" className="action-icon text-gray-500 hover:text-blue-400 transition-colors p-1 rounded-full">
+                    <button onClick={() => onNavigate(seasonId, unitId)} title="Go to unit" className="btn btn-ghost btn-xs btn-circle text-info">
                         <MapPinIcon size={14} />
                     </button>
                 )}
-                <button onClick={handleEditQuest} className="action-icon text-gray-500 hover:text-yellow-400 transition-colors p-1 rounded-full"><EditIcon size={14} /></button>
-                <button onClick={handleDeleteQuest} className="action-icon text-gray-500 hover:text-red-500 transition-colors p-1 rounded-full"><DeleteIcon size={18}/></button>
+                <button onClick={handleEditQuest} title="Edit Quest Description" className="btn btn-ghost btn-xs btn-circle text-base-content/50 hover:text-primary"><EditIcon size={14} /></button>
+                <button onClick={handleDeleteQuest} title="Delete Quest" className="btn btn-ghost btn-xs btn-circle text-base-content/50 hover:text-error"><DeleteIcon size={16}/></button>
             </div>
         </div>
     );
